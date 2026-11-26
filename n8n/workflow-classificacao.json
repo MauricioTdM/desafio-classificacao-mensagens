@@ -1,0 +1,426 @@
+{
+  "name": "Classificação de Mensagens de Clientes (IA)",
+  "nodes": [
+    {
+      "id": "7d204731-5d66-46a4-99a3-c0d90b7bd9a9",
+      "name": "Receber mensagem (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "21e9fd71-9030-4f60-a8e5-601d7595a7cf",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mensagens",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "98eb8ae9-002b-4314-ac64-0bf945a51344",
+      "name": "Normalizar dados",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8ca9c2a4-8b0e-4df7-9fd7-ef56e488ea10",
+              "name": "mensagem",
+              "type": "string",
+              "value": "={{ ($json.body.mensagem || '').trim() }}"
+            },
+            {
+              "id": "8d2fe40c-b543-4a23-92eb-8b6e28d773f0",
+              "name": "cliente",
+              "type": "string",
+              "value": "={{ $json.body.cliente || 'não informado' }}"
+            },
+            {
+              "id": "3a0ae363-de11-47ab-8103-5a15f29a1b22",
+              "name": "canal",
+              "type": "string",
+              "value": "={{ $json.body.canal || 'webhook' }}"
+            },
+            {
+              "id": "aa7463bb-da32-4849-8b25-4b99c1cbe85d",
+              "name": "recebido_em",
+              "type": "string",
+              "value": "={{ $now.toISO() }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "2e12e64b-877a-4958-9214-69bdd31af3bd",
+      "name": "Classificar com IA (API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "onError": "continueErrorOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8000/classificar",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ mensagem: $json.mensagem, cliente: $json.cliente, canal: $json.canal }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "9ec3a1a2-7f38-4a5c-a0ac-41f4f0352920",
+      "name": "Rotear por setor",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        680,
+        200
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "89f5e205-9dd9-4000-9bb4-15f183051b48",
+                    "leftValue": "={{ $json.setor }}",
+                    "rightValue": "atendimento",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "atendimento"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "0bc49c2b-a20b-4fa1-9a0a-2ba314ac30d3",
+                    "leftValue": "={{ $json.setor }}",
+                    "rightValue": "sac",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "sac"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8994a26e-d498-4a6f-a0d9-3efedb6e55c7",
+                    "leftValue": "={{ $json.setor }}",
+                    "rightValue": "operacoes",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "operacoes"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ea0e4511-0ea4-4b12-b1a9-12780bbf0c0c",
+                    "leftValue": "={{ $json.setor }}",
+                    "rightValue": "triagem",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "triagem"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "d9bb15b4-916a-4820-a55b-7d46bbf578a1",
+      "name": "Discord - Atendimento",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        940,
+        20
+      ],
+      "parameters": {
+        "authentication": "webhook",
+        "operation": "sendLegacy",
+        "content": "={{ $json.urgencia === 'alta' ? '🚨 **URGENTE** — ' : '' }}📩 **{{ $json.categoria.toUpperCase() }}** → setor **{{ $json.setor }}** | urgência: {{ $json.urgencia }} | sentimento: {{ $json.sentimento }}\n**Cliente:** {{ $json.cliente }} ({{ $json.canal }})\n**Assunto:** {{ $json.assunto }}\n**Resumo:** {{ $json.resumo }}\n**Mensagem:** {{ $json.mensagem_original.slice(0, 800) }}\n**Sugestão de resposta:** {{ $json.resposta_sugerida }}\n{{ $json.revisao_humana ? '⚠️ Revisão humana necessária (confiança ' + $json.confianca + ')' : '✅ Confiança: ' + $json.confianca }}",
+        "options": {
+          "username": "Classificador IA • atendimento"
+        }
+      },
+      "webhookId": "14574529-f38f-46e5-8cbe-b413047257cc"
+    },
+    {
+      "id": "b33831b1-5de0-49b7-99d2-a46a8e352724",
+      "name": "Discord - SAC",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        940,
+        180
+      ],
+      "parameters": {
+        "authentication": "webhook",
+        "operation": "sendLegacy",
+        "content": "={{ $json.urgencia === 'alta' ? '🚨 **URGENTE** — ' : '' }}📩 **{{ $json.categoria.toUpperCase() }}** → setor **{{ $json.setor }}** | urgência: {{ $json.urgencia }} | sentimento: {{ $json.sentimento }}\n**Cliente:** {{ $json.cliente }} ({{ $json.canal }})\n**Assunto:** {{ $json.assunto }}\n**Resumo:** {{ $json.resumo }}\n**Mensagem:** {{ $json.mensagem_original.slice(0, 800) }}\n**Sugestão de resposta:** {{ $json.resposta_sugerida }}\n{{ $json.revisao_humana ? '⚠️ Revisão humana necessária (confiança ' + $json.confianca + ')' : '✅ Confiança: ' + $json.confianca }}",
+        "options": {
+          "username": "Classificador IA • sac"
+        }
+      },
+      "webhookId": "63504027-ff19-4393-a03c-4a6b6e6ba7bf"
+    },
+    {
+      "id": "6ec0a7e0-e199-4cd1-9394-669a657b3fe4",
+      "name": "Discord - Operações",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        940,
+        340
+      ],
+      "parameters": {
+        "authentication": "webhook",
+        "operation": "sendLegacy",
+        "content": "={{ $json.urgencia === 'alta' ? '🚨 **URGENTE** — ' : '' }}📩 **{{ $json.categoria.toUpperCase() }}** → setor **{{ $json.setor }}** | urgência: {{ $json.urgencia }} | sentimento: {{ $json.sentimento }}\n**Cliente:** {{ $json.cliente }} ({{ $json.canal }})\n**Assunto:** {{ $json.assunto }}\n**Resumo:** {{ $json.resumo }}\n**Mensagem:** {{ $json.mensagem_original.slice(0, 800) }}\n**Sugestão de resposta:** {{ $json.resposta_sugerida }}\n{{ $json.revisao_humana ? '⚠️ Revisão humana necessária (confiança ' + $json.confianca + ')' : '✅ Confiança: ' + $json.confianca }}",
+        "options": {
+          "username": "Classificador IA • operacoes"
+        }
+      },
+      "webhookId": "aa052149-ebd5-4fd6-8304-f105969314c5"
+    },
+    {
+      "id": "67d4bc7a-8846-4d63-919c-55a53308c58d",
+      "name": "Discord - Triagem",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        940,
+        500
+      ],
+      "parameters": {
+        "authentication": "webhook",
+        "operation": "sendLegacy",
+        "content": "={{ $json.urgencia === 'alta' ? '🚨 **URGENTE** — ' : '' }}📩 **{{ $json.categoria.toUpperCase() }}** → setor **{{ $json.setor }}** | urgência: {{ $json.urgencia }} | sentimento: {{ $json.sentimento }}\n**Cliente:** {{ $json.cliente }} ({{ $json.canal }})\n**Assunto:** {{ $json.assunto }}\n**Resumo:** {{ $json.resumo }}\n**Mensagem:** {{ $json.mensagem_original.slice(0, 800) }}\n**Sugestão de resposta:** {{ $json.resposta_sugerida }}\n{{ $json.revisao_humana ? '⚠️ Revisão humana necessária (confiança ' + $json.confianca + ')' : '✅ Confiança: ' + $json.confianca }}",
+        "options": {
+          "username": "Classificador IA • triagem"
+        }
+      },
+      "webhookId": "de4c2006-a894-4e7e-9b83-a9e66df42d2d"
+    },
+    {
+      "id": "59674612-e8e8-4f04-a7a6-736c497d08f6",
+      "name": "Responder sucesso",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        200
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'encaminhado', setor: $('Classificar com IA (API)').item.json.setor, classificacao: $('Classificar com IA (API)').item.json } }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "ea41a787-e8b4-48c5-9e0f-b352069a005d",
+      "name": "Responder erro",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        680,
+        480
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'erro', detalhe: $json.error?.message || 'Falha ao classificar a mensagem' } }}",
+        "options": {
+          "responseCode": 502
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Receber mensagem (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Normalizar dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar dados": {
+      "main": [
+        [
+          {
+            "node": "Classificar com IA (API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classificar com IA (API)": {
+      "main": [
+        [
+          {
+            "node": "Rotear por setor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rotear por setor": {
+      "main": [
+        [
+          {
+            "node": "Discord - Atendimento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Discord - SAC",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Discord - Operações",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Discord - Triagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord - Atendimento": {
+      "main": [
+        [
+          {
+            "node": "Responder sucesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord - SAC": {
+      "main": [
+        [
+          {
+            "node": "Responder sucesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord - Operações": {
+      "main": [
+        [
+          {
+            "node": "Responder sucesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord - Triagem": {
+      "main": [
+        [
+          {
+            "node": "Responder sucesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

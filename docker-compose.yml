@@ -1,0 +1,55 @@
+services:
+  # API FastAPI + Gemini
+  api:
+    build: .
+    container_name: classificador-api
+    env_file: .env
+    ports:
+      - "${API_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Roda uma vez: importa as credenciais do Discord e o workflow, e publica o fluxo
+  n8n-init:
+    image: n8nio/n8n:2.35.7
+    container_name: classificador-n8n-init
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        node /workflows/docker-init.js &&
+        n8n import:credentials --input=/tmp/credenciais.json &&
+        n8n import:workflow --input=/tmp/workflow.json &&
+        n8n publish:workflow --id=ClassMsgIA000001
+    environment:
+      - API_URL_N8N=http://api:8000
+      - DISCORD_WEBHOOK_ATENDIMENTO=${DISCORD_WEBHOOK_ATENDIMENTO:-}
+      - DISCORD_WEBHOOK_SAC=${DISCORD_WEBHOOK_SAC:-}
+      - DISCORD_WEBHOOK_OPERACOES=${DISCORD_WEBHOOK_OPERACOES:-}
+      - DISCORD_WEBHOOK_TRIAGEM=${DISCORD_WEBHOOK_TRIAGEM:-}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n:/workflows:ro
+
+  # n8n com o fluxo já ativo em /webhook/mensagens
+  n8n:
+    image: n8nio/n8n:2.35.7
+    container_name: classificador-n8n
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - TZ=America/Sao_Paulo
+      - N8N_SECURE_COOKIE=false
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      n8n-init:
+        condition: service_completed_successfully
+      api:
+        condition: service_healthy
+
+volumes:
+  n8n_data:

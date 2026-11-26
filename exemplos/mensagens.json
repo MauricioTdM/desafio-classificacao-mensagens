@@ -1,0 +1,8 @@
+[
+  {"cliente": "Ana Souza", "canal": "site", "mensagem": "Olá! Vocês entregam em Manaus? Quanto tempo costuma levar?"},
+  {"cliente": "Carlos Lima", "canal": "email", "mensagem": "Comprei um fone há 3 dias e ele chegou com o lado esquerdo sem som. Estou muito decepcionado, quero uma solução urgente."},
+  {"cliente": "Beatriz Rocha", "canal": "whatsapp", "mensagem": "Preciso da segunda via do boleto do pedido 4521, por favor."},
+  {"cliente": "João Pedro", "canal": "instagram", "mensagem": "Chegou antes do prazo e muito bem embalado. Parabéns pelo atendimento!"},
+  {"cliente": "Marcos", "canal": "email", "mensagem": "Fui cobrado duas vezes no cartão pela mesma compra! Se não estornarem até amanhã vou abrir reclamação no Procon."},
+  {"cliente": "desconhecido", "canal": "site", "mensagem": "GANHE DINHEIRO FÁCIL clique aqui agora!!!"}
+]
